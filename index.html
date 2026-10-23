@@ -183,7 +183,7 @@ document.addEventListener('click',e=>{const t=e.target.closest('[data-t]'),c=e.t
 /* ===== COLE AQUI os dados do seu projeto Supabase ===== */
 /* ===== COLE AQUI os dados do seu projeto Supabase ===== */
 const SB_URL="https://mulmobiwrfjcozqhwlmn.supabase.co",SB_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im11bG1vYml3cmZqY296cWh3bG1uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI3MTk3MDAsImV4cCI6MjEwODI5NTcwMH0.cwdIZ_ymxc4gorM_GeOkLYxPjvh9dQoBldwcI2oruwA";
-let SB=null,SK=0;
+let SB=null,SK=0,ERR='';
 /* ===== sala, pontuação, ranking ===== */
 let DB=null,U=null,ST={status:'lobby'},PL={},myId=null,isOrg=true,me=null,onl=false,cf=0,PT=0,GK=0,fnc=null;
 const GG=()=>{if(++GK>3000)throw 0;return 1};
@@ -201,7 +201,7 @@ function join(){const n=$('#nm').value.trim(),m=$('#lbMsg');if(!n){m.textContent
 function rank(){const a=Object.values(PL).sort((x,y)=>y.score-x.score||x.errs-y.errs||(x.tMs||1e12)-(y.tMs||1e12));let r=0,pk='';
  return '<table class="r"><tr><th>#</th><th>Jogador</th><th>Pontos</th><th>Erros</th><th>Missões</th><th>Tempo</th></tr>'+a.map((p,i)=>{const k=[p.score,p.errs,p.tMs].join();if(k!=pk){r=i+1;pk=k}const n=Object.keys(p.done).length;return `<tr class="${me&&p.id==me.id?'me':''}"><td>${r}º</td><td>${esc(p.name)}</td><td>${p.score}</td><td>${p.errs}</td><td>${n} de ${M.length}</td><td>${n?fmt(p.tMs):'—'}</td></tr>`}).join('')+'</table>'}
 function render(){const s=ST.status,pl=Object.values(PL),L=$('#lb'),R=$('#rk');
- $('#top').innerHTML=`<span>${onl?'Online, sincronizado':'Modo local (só neste navegador)'}</span><span>${{lobby:'Aguardando jogadores',running:'Partida em andamento',ended:'Partida encerrada'}[s]||''}</span>`
+ $('#top').innerHTML=`<span>${onl?'Online, sincronizado':'Modo local (só neste navegador)'}</span>${!onl&&ERR?`<span style="color:var(--bad)">Erro: ${esc(ERR)}</span>`:''}<span>${{lobby:'Aguardando jogadores',running:'Partida em andamento',ended:'Partida encerrada'}[s]||''}</span>`
  +(s!='lobby'?`<span>⏱ <b id="clk">${fmt(el())}</b></span>`:'')
  +(me&&s!='lobby'?`<span>${esc(me.name)}: ${me.score} pts · ${me.errs} erros · ${Object.keys(me.done).length}/${M.length} missões</span>`:'')
  +(!onl&&pl.length?`<select id="pp" aria-label="Jogador">${pl.map(p=>`<option value="${p.id}" ${me&&p.id==me.id?'selected':''}>${esc(p.name)}</option>`).join('')}</select>`:'')
@@ -242,7 +242,7 @@ document.addEventListener('click',e=>{const id=e.target.id;
  else if(id=='bY'&&isOrg&&ST.status=='running'){cf=0;stop();setSt({status:'ended',endedAt:Date.now()})}
  else if(id=='bNg'&&isOrg){PL={};me=null;setSt({status:'lobby',startedAt:0,endedAt:0})}});
 document.addEventListener('change',e=>{if(e.target.id=='pp'){me=PL[e.target.value]||me;render();load(0)}});
-const rpc=(f,a)=>SB.rpc(f,a).then(r=>{if(r.error&&f!='join_game')msg(r.error.message,'bad');return r});
+const rpc=(f,a)=>SB.rpc(f,a).then(r=>{if(r.error&&f!='join_game'){msg(r.error.message,'bad');if(['start_game','end_game','new_game'].includes(f))alert('Erro ao executar '+f+': '+r.error.message)}return r});
 let pt=0,dn=-1,ld=0;const deb=()=>{clearTimeout(pt);pt=setTimeout(pull,300)};
 async function pull(){try{const[g,p]=await Promise.all([SB.from('game').select('*').eq('id',1).single(),SB.from('players').select('*')]);
  const o=ST.status,d=g.data;if(d)ST={status:d.status,startedAt:d.started_at?Date.parse(d.started_at):0,endedAt:d.ended_at?Date.parse(d.ended_at):0};
@@ -251,7 +251,7 @@ async function pull(){try{const[g,p]=await Promise.all([SB.from('game').select('
  if(me&&!ld&&ST.status=='running'){let i=0;while(me.done[i]!=null&&i<M.length-1)i++;load(i)}else if(o!='running'&&ST.status=='running')load(0);
  if(me)ld=1;
  const n=me?Object.keys(me.done).length:-1;if(n!=dn){dn=n;draw()}
- render()}catch(e){}}
+ render()}catch(e){console.error('pull:',e)}}
 (async()=>{try{
  if(/COLE/.test(SB_URL))throw 0;
  SB=supabase.createClient(SB_URL,SB_KEY);
@@ -260,7 +260,7 @@ async function pull(){try{const[g,p]=await Promise.all([SB.from('game').select('
  myId=session.user.id;isOrg=!!session.user.email;onl=true;
  const t=await SB.rpc('server_time');if(t.data)SK=Date.parse(t.data)-Date.now();
  await pull();SB.channel('g').on('postgres_changes',{event:'*',schema:'public'},deb).subscribe();setInterval(pull,5000)
-}catch(x){onl=false}render()})();
+}catch(x){onl=false;ERR=(x&&(x.message||x.code))||String(x);console.error('Supabase:',x)}render()})();
 document.addEventListener('click',e=>{if(e.target.id=='bOrg'){e.preventDefault();if(!SB)return alert('Configure o Supabase no arquivo primeiro.');const m=prompt('E-mail do organizador'),s=m&&prompt('Senha');if(s)SB.auth.signInWithPassword({email:m,password:s}).then(r=>r.error?alert('E-mail ou senha incorretos.'):location.reload())}});
 setInterval(()=>{const c=$('#clk');if(c)c.textContent=fmt(el())},1000);
 render();
