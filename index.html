@@ -64,6 +64,8 @@ table.r{width:100%;border-collapse:collapse}table.r th,table.r td{padding:7px 8p
 table.r tr.me{background:color-mix(in srgb,var(--ac) 18%,transparent)}
 .tabs button.lk{opacity:.5;cursor:not-allowed}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
+.hint a{color:var(--ac);font-weight:600}
+#top button{padding:4px 10px;border:1px solid var(--line);background:var(--card);color:var(--fg);border-radius:8px;cursor:pointer;font:inherit}
 </style></head><body><div class="w">
 <h1>Código Vivo · Painel do Autômato</h1>
 <p class="sub">Arraste as cartas para as lacunas, compile e veja o robô executar o código literalmente.</p>
@@ -202,6 +204,7 @@ function rank(){const a=Object.values(PL).sort((x,y)=>y.score-x.score||x.errs-y.
  return '<table class="r"><tr><th>#</th><th>Jogador</th><th>Pontos</th><th>Erros</th><th>Missões</th><th>Tempo</th></tr>'+a.map((p,i)=>{const k=[p.score,p.errs,p.tMs].join();if(k!=pk){r=i+1;pk=k}const n=Object.keys(p.done).length;return `<tr class="${me&&p.id==me.id?'me':''}"><td>${r}º</td><td>${esc(p.name)}</td><td>${p.score}</td><td>${p.errs}</td><td>${n} de ${M.length}</td><td>${n?fmt(p.tMs):'—'}</td></tr>`}).join('')+'</table>'}
 function render(){const s=ST.status,pl=Object.values(PL),L=$('#lb'),R=$('#rk');
  $('#top').innerHTML=`<span>${onl?'Online, sincronizado':'Modo local (só neste navegador)'}</span>${!onl&&ERR?`<span style="color:var(--bad)">Erro: ${esc(ERR)}</span>`:''}<span>${{lobby:'Aguardando jogadores',running:'Partida em andamento',ended:'Partida encerrada'}[s]||''}</span>`
+ +(isOrg&&onl?'<button id="bOut">Sair do modo organizador</button>':'')
  +(s!='lobby'?`<span>⏱ <b id="clk">${fmt(el())}</b></span>`:'')
  +(me&&s!='lobby'?`<span>${esc(me.name)}: ${me.score} pts · ${me.errs} erros · ${Object.keys(me.done).length}/${M.length} missões</span>`:'')
  +(!onl&&pl.length?`<select id="pp" aria-label="Jogador">${pl.map(p=>`<option value="${p.id}" ${me&&p.id==me.id?'selected':''}>${esc(p.name)}</option>`).join('')}</select>`:'')
@@ -262,7 +265,13 @@ async function pull(){try{const[g,p]=await Promise.all([SB.from('game').select('
  const t=await SB.rpc('server_time');if(t.data)SK=Date.parse(t.data)-Date.now();
  await pull();SB.channel('g').on('postgres_changes',{event:'*',schema:'public'},deb).subscribe();setInterval(pull,5000)
 }catch(x){onl=false;ERR=(x&&(x.message||x.code))||String(x);console.error('Supabase:',x)}render()})();
-document.addEventListener('click',e=>{if(e.target.id=='bOrg'){e.preventDefault();if(!SB)return alert('Configure o Supabase no arquivo primeiro.');if(isOrg&&onl){SB.auth.signOut().then(()=>location.reload());return}const m=prompt('E-mail do organizador'),s=m&&prompt('Senha');if(s)SB.auth.signInWithPassword({email:m,password:s}).then(r=>r.error?alert('E-mail ou senha incorretos.'):location.reload())}});
+function sairOrg(){
+ const limpar=()=>{try{Object.keys(localStorage).filter(k=>/^sb-.*-auth-token/.test(k)).forEach(k=>localStorage.removeItem(k))}catch(e){}try{Object.keys(sessionStorage).filter(k=>/^sb-/.test(k)).forEach(k=>sessionStorage.removeItem(k))}catch(e){}};
+ const fim=()=>{limpar();location.reload()};
+ try{Promise.race([SB.auth.signOut({scope:'local'}),new Promise(r=>setTimeout(r,1500))]).catch(()=>{}).then(fim)}catch(e){fim()}
+}
+document.addEventListener('click',e=>{if(e.target.id=='bOut'){e.preventDefault();sairOrg()}});
+document.addEventListener('click',e=>{if(e.target.id=='bOrg'){e.preventDefault();if(!SB)return alert('Configure o Supabase no arquivo primeiro.');if(isOrg&&onl){sairOrg();return}const m=prompt('E-mail do organizador'),s=m&&prompt('Senha');if(s)SB.auth.signInWithPassword({email:m,password:s}).then(r=>r.error?alert('E-mail ou senha incorretos.'):location.reload())}});
 setInterval(()=>{const c=$('#clk');if(c)c.textContent=fmt(el())},1000);
 render();
 load(0);
