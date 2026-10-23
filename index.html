@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Código Vivo · Painel do Autômato</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<style>
+:root{--bg:#eef1f5;--fg:#14213d;--card:#fff;--line:#c5cdd8;--ac:#1f6f8b;--ok:#2e7d32;--bad:#c62828;--wn:#b8590b;--code:#f7f6ee;--bl:#ffe9b0;--mu:#5d6b7e;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0d1520;--fg:#e6edf3;--card:#16212f;--line:#2c3b4e;--ac:#5bb4d3;--ok:#66bb6a;--bad:#ef5350;--wn:#f0a050;--code:#0f1823;--bl:#4a3b10;--mu:#9aa9bb}}
+:root[data-theme="dark"]{--bg:#0d1520;--fg:#e6edf3;--card:#16212f;--line:#2c3b4e;--ac:#5bb4d3;--ok:#66bb6a;--bad:#ef5350;--wn:#f0a050;--code:#0f1823;--bl:#4a3b10;--mu:#9aa9bb}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 "Segoe UI",system-ui,sans-serif}
+.w{max-width:1100px;margin:0 auto;padding:14px}
+h1{font:700 22px/1.2 "Segoe UI",system-ui,sans-serif;margin:4px 0 2px}
+.sub{color:var(--mu);margin:0 0 12px}
+.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.tabs button{padding:8px 14px;border:1px solid var(--line);background:var(--card);color:var(--fg);border-radius:8px;cursor:pointer;font:inherit}
+.tabs button.on{background:var(--ac);color:#fff;border-color:var(--ac)}
+main{display:grid;grid-template-columns:1.15fr 1fr;gap:14px}
+@media(max-width:820px){main{grid-template-columns:1fr}}
+.p{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px;margin-bottom:12px}
+.p h2{font-size:14px;margin:0 0 8px;color:var(--ac)}
+.os{margin:0}
+#code{background:var(--code);border:1px solid var(--line);border-radius:8px;padding:8px 0;font:13.5px/1.9 Consolas,"Courier New",monospace;overflow-x:auto}
+.ln{display:flex;white-space:pre;padding-right:10px;border-left:4px solid transparent}
+.ln i{width:34px;text-align:right;padding-right:10px;color:var(--mu);font-style:normal;flex:none}
+.ln.cur{background:color-mix(in srgb,var(--ac) 22%,transparent);border-left-color:var(--ac)}
+.ln.er{background:color-mix(in srgb,var(--bad) 22%,transparent);border-left-color:var(--bad)}
+.bl{display:inline-block;min-width:78px;text-align:center;padding:0 8px;border:2px dashed var(--wn);background:var(--bl);border-radius:6px;color:var(--wn);font-weight:700;cursor:pointer;line-height:1.5}
+.bl.f{border-style:solid;color:var(--fg);cursor:grab}
+#bank{display:flex;flex-wrap:wrap;gap:8px;min-height:48px;padding:8px;border:1px dashed var(--line);border-radius:8px}
+.cd{padding:6px 11px;border:1px solid var(--ac);border-radius:8px;background:var(--card);font:700 13.5px Consolas,"Courier New",monospace;cursor:grab;user-select:none}
+.cd.sel{background:var(--ac);color:#fff}
+.hint{font-size:12.5px;color:var(--mu);margin:6px 0 0}
+.bt{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.bt button,.bt select{padding:8px 12px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--fg);font:inherit;cursor:pointer}
+.bt .go{background:var(--ok);color:#fff;border-color:var(--ok)}
+.bt .cp{background:var(--ac);color:#fff;border-color:var(--ac)}
+.barw{height:18px;border:1px solid var(--line);border-radius:9px;overflow:hidden;background:var(--code)}
+#bar{height:100%;background:var(--ok);width:100%;transition:width .4s}
+#bar.low{background:var(--bad)}
+#bt{font-size:13px;color:var(--mu);margin-top:4px}
+#stage{display:flex;gap:8px}
+.bx{flex:1;min-width:0;border:2px solid var(--line);border-radius:10px;padding:6px;text-align:center;min-height:98px;transition:.3s}
+.bx.on{border-color:var(--ac);background:color-mix(in srgb,var(--ac) 14%,transparent)}
+.bx b{font-size:12.5px;display:block}
+.bx div{font-size:20px;min-height:28px;word-break:break-all}
+#msg{padding:10px;border-radius:8px;border:1px solid var(--line);font-weight:600;display:none}
+#msg.ok{display:block;border-color:var(--ok);color:var(--ok)}
+#msg.bad{display:block;border-color:var(--bad);color:var(--bad)}
+#msg.wn{display:block;border-color:var(--wn);color:var(--wn)}
+#log{font:13px/1.5 Consolas,"Courier New",monospace;max-height:190px;overflow:auto}
+#log div{padding:2px 0;border-bottom:1px solid var(--line)}
+[hidden]{display:none!important}
+#top{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px;font-size:13.5px}
+#top span{padding:3px 10px;border:1px solid var(--line);border-radius:14px;background:var(--card)}
+#top button,#lb button,#rk button,#top select,#lb input{padding:7px 12px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--fg);font:inherit;cursor:pointer}
+#lb input{cursor:text}
+#lb button:disabled{opacity:.5;cursor:not-allowed}
+.go2{background:var(--ok)!important;color:#fff!important;border-color:var(--ok)!important}
+.rd{background:var(--bad)!important;color:#fff!important;border-color:var(--bad)!important}
+table.r{width:100%;border-collapse:collapse}table.r th,table.r td{padding:7px 8px;border-bottom:1px solid var(--line);text-align:left}
+table.r tr.me{background:color-mix(in srgb,var(--ac) 18%,transparent)}
+.tabs button.lk{opacity:.5;cursor:not-allowed}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style></head><body><div class="w">
+<h1>Código Vivo · Painel do Autômato</h1>
+<p class="sub">Arraste as cartas para as lacunas, compile e veja o robô executar o código literalmente.</p>
+<div id="top"></div><div id="lb" class="p" hidden></div><div id="rk" class="p" hidden></div><div class="tabs" id="tabs"></div>
+<main id="gm">
+<section>
+<div class="p"><h2>Ordem de Serviço</h2><p class="os" id="os"></p></div>
+<div class="p"><h2>Código da guilda</h2><div id="code"></div>
+<p class="hint">Arraste uma carta até a lacuna. No celular: toque na carta e depois na lacuna. Toque numa lacuna preenchida para devolver a carta.</p></div>
+<div class="p"><h2>Cartas de resposta (nem todas servem)</h2><div id="bank"></div>
+<div class="bt"><button class="cp" id="bC">Compilar</button><button class="go" id="bE">Executar</button><button id="bS">Passo a passo</button>
+<select id="sp" aria-label="Velocidade"><option value="1100">Lento</option><option value="700" selected>Normal</option><option value="300">Rápido</option></select>
+<button id="bH">Suporte Técnico (−5)</button><button id="bR">Reiniciar</button></div></div>
+</section>
+<section>
+<div class="p"><h2>Bateria da Torre</h2><div class="barw"><div id="bar"></div></div><div id="bt"></div></div>
+<div class="p"><h2>Centro de distribuição</h2><div id="stage"></div><p class="hint" id="info"></p></div>
+<div id="msg" class="p"></div>
+<div class="p"><h2>Fala do Autômato (Modo Literal)</h2><div id="log"></div></div>
+</section></main><p class="hint"><a href="#" id="bOrg">Sou o organizador</a></p></div>
+<script>
+const $=s=>document.querySelector(s);
+const esc=s=>s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const BX1=[['dock','Doca'],['shelf','Prateleira'],['exc','Excedente']];
+const BX2=[['dock','Doca'],['shelf','Pedido'],['exc','Descarte']];
+const M=[
+{n:'Tutorial',bat:20,os:'Missão: o Autômato deve andar até a parede (3 quadrados), virar à esquerda e se apresentar.',
+ code:['int passos = {0};','andar(passos);','{1};','printf( {2} );'],
+ cards:['virar_esquerda()','"Olá, Torre"','3','virar_esquerda','5'],
+ ok:[['3','5'],['virar_esquerda()'],['"Olá, Torre"']],syn:[{},{virar_esquerda:'“virar_esquerda” é função. Esperado “()”.'},{}],
+ box:[['p0','Início'],['p1','1'],['p2','2'],['p3','Parede']],s0:{pos:'p0'},info:'A parede fica a 3 quadrados do início. Cada quadrado andado gasta 1 ciclo.',
+ sim(v,L){const n=+v[0];L(1,`passos = ${n}`);L(2,`andar(${n})`,n,{pos:'p'+Math.min(n,3),n});if(n>3)L(2,'Ai! Bati na parede.');L(3,'virar_esquerda()',1,{dir:'⬅'});L(4,'printf: “Olá, Torre”',0,{o:1})},
+ chk:s=>s.n>3?[0,'O robô bateu na parede: eram só 3 quadrados.']:[1,'']},
+{n:'Missão 1 · Recebimento',bat:30,os:'Chegou uma caixa com 5 itens na doca. A prateleira só aguenta 3. Guardem os 3 primeiros e joguem o resto na zona de excedente. Depois digam quantos itens chegaram.',
+ code:['int total = 0;','','while ( {0} ) {','    pegar();','    if ( total {1} 3 ) {','        guardar();','    } else {','        soltar();','    }','    total = {2};','}','','printf("Itens recebidos: %d", {3} );'],
+ cards:['total + 2','<','tem_item','total','<=','tem_item()','total + 1'],
+ ok:[['tem_item()'],['<','<='],['total + 1','total + 2','total'],['total','total + 1','total + 2']],
+ syn:[{tem_item:'“tem_item” é função. Esperado “()”.'},{},{},{}],box:BX1,s0:{pos:'dock',dock:5,shelf:0,exc:0},
+ info:'guardar() custa 5 ciclos · pegar() e soltar() custam 1 · tem_item() e printf são grátis.',
+ sim(v,L,S){let tot=0;const ev=e=>e=='total + 1'?tot+1:e=='total + 2'?tot+2:tot;
+  for(;;){const d=S().dock;L(3,'tem_item()? '+(d?'VERDADEIRO':'FALSO'));if(!d)break;
+   L(4,'pegar()',1,{dock:d-1,pos:'dock'});
+   const c=v[1]=='<'?tot<3:tot<=3;L(5,`total ${v[1]} 3? Tenho ${tot}. ${c?'VERDADEIRO':'FALSO'}`);
+   c?L(6,'guardar()',5,{shelf:S().shelf+1,pos:'shelf'}):L(8,'soltar()',1,{exc:S().exc+1,pos:'exc'});
+   tot=ev(v[2]);L(10,`total = ${v[2]}. Agora total vale ${tot}`)}
+  const o=ev(v[3]);L(13,`printf: “Itens recebidos: ${o}”`,0,{o})},
+ chk:s=>s.shelf>3?[0,'A pilha caiu! A prateleira só aguenta 3 itens.']:s.o!=5?[0,`O printf disse ${s.o}, mas chegaram 5 itens.`]:[1,'']},
+{n:'Missão 2 · Pedido da UPA',bat:20,os:'A UPA pediu os 4 itens da doca. Item vencido (validade negativa) vai para o descarte; item válido vai para o pedido. Cada item custa R$ 10. Digam o custo final.',
+ code:['int custo = 0;','','for (int i = 0; i < {0}; i++) {','    pegar();','    if ( ler_validade() {1} 0 ) {','        custo = custo + {2};','        separar();','    } else {','        descartar();','    }','}','','printf("Custo do pedido: %d", {3} );'],
+ cards:['custo','3','ler_preco','<','4','ler_preco()','>'],
+ ok:[['3','4'],['<','>'],['ler_preco()'],['custo']],syn:[{},{},{ler_preco:'“ler_preco” é função. Esperado “()”.'},{}],
+ box:BX2,s0:{pos:'dock',dock:4,shelf:0,exc:0},info:'Validades na doca, em ordem: 5 · −1 · 3 · 2. separar() e descartar() custam 2 ciclos · pegar() custa 1.',
+ sim(v,L,S){const it=[5,-1,3,2];let c=0;
+  for(let i=0;i<+v[0];i++){L(3,`i = ${i}. ${i} < ${v[0]}? VERDADEIRO`);L(4,'pegar()',1,{dock:S().dock-1,pos:'dock'});
+   const x=it[i],q=v[1]=='>'?x>0:x<0;L(5,`ler_validade() ${v[1]} 0? Validade ${x}. ${q?'VERDADEIRO':'FALSO'}`);
+   if(q){c+=10;L(6,`custo = custo + ler_preco(). Custo: ${c}`);L(7,'separar()',2,{shelf:S().shelf+1,pos:'shelf'})}
+   else L(9,'descartar()',2,{exc:S().exc+1,pos:'exc'})}
+  L(3,`${v[0]} < ${v[0]}? FALSO`);L(13,`printf: “Custo do pedido: ${c}”`,0,{o:c})},
+ chk:s=>s.dock>0?[0,'Um item ficou na doca sem ser processado.']:s.shelf!=3?[0,'Itens vencidos e válidos foram para a caixa errada.']:[1,'']},
+F('Missão 3 · Maior carga','maior','Dois caminhões chegaram com cargas diferentes. Complete a função que devolve o maior valor entre a e b.',['int maior(int a, int b) {','    if (a {0} b) {','        return {1};','    } else {','        return {2};','    }','}'],['<','b','==','a','>'],[[[1,2],2],[[5,3],5],[[4,4],4],[[-1,-2],-1],[[0,9],9]]),
+F('Missão 4 · Soma dos lotes','somar','Some os lotes de 1 até n. Exemplo: somar(3) devolve 1 + 2 + 3 = 6.',['int somar(int n) {','    int total = {0};','    for (int i = 1; i {1} n; i++) {','        total = total + {2};','    }','    return total;','}'],['n','<','0','=','<=','1','i'],[[[1],1],[[3],6],[[4],10],[[0],0],[[5],15]]),
+F('Missão 5 · Prateleiras pares','contarPares','Conte quantos números pares existem de 1 até n. O resto da divisão por 2 (o operador %) mostra se o número é par.',['int contarPares(int n) {','    int c = 0;','    for (int i = 1; i <= n; i++) {','        if (i % 2 {0} 0) {','            c = c + {1};','        }','    }','    return c;','}'],['==','!=','=','1','i'],[[[1],0],[[2],1],[[5],2],[[10],5],[[7],3]]),
+F('Missão 6 · Alerta de validade','classificar','Classifique pelos dias para vencer: 0 = vencido (dias negativos), 1 = urgente (de 0 a 7 dias), 2 = tranquilo (mais de 7 dias).',['int classificar(int dias) {','    if (dias {0} 0) {','        return 0;','    } else if (dias <= {1}) {','        return 1;','    } else {','        return 2;','    }','}'],['<','30','7','>','<='],[[[-3],0],[[0],1],[[7],1],[[8],2],[[30],2],[[-1],0]]),
+F('Missão 7 · Rota de ré','distancia','O robô anda em x e y, e valor negativo significa andar de ré. Devolva a distância total sem sinal: |x| + |y|.',['int distancia(int x, int y) {','    if (x < 0) {','        x = {0};','    }','    if (y < 0) {','        y = {1};','    }','    return x + y;','}'],['-x','y','-y','x'],[[[3,4],7],[[-3,4],7],[[3,-4],7],[[-3,-4],7],[[0,0],0],[[-2,0],2]]),
+F('Missão 8 · Autonomia','ciclos','Cada volta gasta a quantidade “gasto” da bateria. Conte quantas voltas o robô dá enquanto a bateria for maior que 0.',['int ciclos(int bateria, int gasto) {','    int voltas = 0;','    while (bateria {0} 0) {','        bateria = bateria {1} gasto;','        voltas = voltas + 1;','    }','    return voltas;','}'],['>','<','-','+','>='],[[[10,3],4],[[9,3],3],[[5,5],1],[[1,1],1],[[0,2],0]]),
+F('Missão 9 · Menor estoque','menor','Dado um vetor v com n quantidades, devolva a menor. Lembre: o vetor começa na posição 0.',['int menor(int v[], int n) {','    int m = v[{0}];','    for (int i = 1; i < {1}; i++) {','        if (v[i] {2} m) {','            m = v[i];','        }','    }','    return m;','}'],['0','1','n','n - 1','<','>'],[[[[5,3,8],3],3],[[[7],1],7],[[[9,4,6,2],4],2],[[[1,2,3],3],1],[[[4,4],2],4]]),
+F('Missão 10 · Itens válidos','totalValido','Some só os itens com quantidade entre 1 e 100 (inclusive). Os demais são erro de leitura e devem ser ignorados.',['int totalValido(int v[], int n) {','    int t = 0;','    for (int i = 0; i < n; i++) {','        if (v[i] > {0} {1} v[i] <= 100) {','            t = t + v[i];','        }','    }','    return t;','}'],['0','1','&&','||','100'],[[[[5,-2,50,200],4],55],[[[-1,-2],2],0],[[[100,101],2],100],[[[0,3],2],3],[[[1],1],1],[[[],0],0]]),
+F('Missão 11 · Endereços','combinacoes','Cada uma das a ruas tem b prateleiras. Conte quantos endereços (rua, prateleira) existem no total.',['int combinacoes(int a, int b) {','    int c = 0;','    for (int i = 1; i <= a; i++) {','        for (int j = 1; j {0} b; j++) {','            c = c + {1};','        }','    }','    return c;','}'],['<=','<','1','i','j'],[[[2,3],6],[[1,1],1],[[3,2],6],[[4,4],16],[[0,5],0]]),
+F('Missão 12 · Busca de SKU','buscar','Devolva a posição do alvo no vetor, ou -1 se ele não estiver no vetor.',['int buscar(int v[], int n, int alvo) {','    for (int i = 0; i < n; i++) {','        if (v[i] {0} alvo) {','            return {1};','        }','    }','    return {2};','}'],['==','=','!=','i','v[i]','-1','0'],[[[[4,7,9],3,7],1],[[[4,7,9],3,5],-1],[[[2],1,2],0],[[[],0,1],-1],[[[1,2,3,2],4,2],1]])
+];
+let cur=0,pl,ord,pen,okc,errLn,errs,tr,ix,tm,play,rem,sel=null,dragK=null,best=M.map(()=>0);
+const shuf=a=>{a=[...a];for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a};
+function load(i){cur=i;const m=M[i];pl=Array.from({length:(m.code.join('').match(/\{\d\}/g)||[]).length},()=>null);ord=shuf(m.cards);pen=0;errs=0;okc=false;errLn=0;sel=null;tr=null;stop();$('#log').innerHTML='';$('#msg').className='p';draw()}
+function stop(){play=false;clearTimeout(tm)}
+function msg(t,c){const e=$('#msg');e.className='p '+c;e.textContent=t}
+function bat(v){const m=M[cur],p=Math.max(0,v)/m.bat*100;$('#bar').style.width=p+'%';$('#bar').className=p<=20?'low':'';$('#bt').textContent=`${Math.max(0,v)} de ${m.bat} ciclos`}
+function stg(s){const m=M[cur];$('#stage').innerHTML=m.box.map(([k,l])=>{const on=s.pos==k,n=typeof s[k]=='number'?(s[k]?'📦'.repeat(s[k]):'·'):'';return `<div class="bx ${on?'on':''}"><b>${l}</b><div>${on?'🤖'+(s.dir||''):''}</div><div>${n}</div></div>`}).join('')}
+function draw(){const m=M[cur];
+ $('#tabs').innerHTML=M.map((x,i)=>`<button class="${i==cur?'on':''}" data-t="${i}">${x.n}${best[i]?' '+'★'.repeat(best[i]):''}</button>`).join('');
+ $('#os').textContent=m.os;$('#info').textContent=m.info;
+ $('#code').innerHTML=m.code.map((l,i)=>`<div class="ln ${errLn==i+1?'er':''}" id="l${i+1}"><i>${i+1}</i><span>${esc(l).replace(/\{(\d)\}/g,(_,k)=>{const c=pl[k],ci=m.cards.indexOf(c);return `<b class="bl ${c?'f':''}" data-i="${k}" ${c?`draggable="true" data-k="${ci}"`:''}>${c?esc(c):'L'+(+k+1)}</b>`})}</span></div>`).join('');
+ $('#bank').innerHTML=ord.filter(c=>!pl.includes(c)).map(c=>{const ci=m.cards.indexOf(c);return `<span class="cd ${sel==ci?'sel':''}" draggable="true" data-k="${ci}">${esc(c)}</span>`}).join('')||'<span class="hint">Todas as cartas foram usadas.</span>';
+ bat(m.bat-pen);stg(m.s0)}
+function put(i,c){stop();tr=null;pl=pl.map(x=>x==c?null:x);if(i>=0)pl[i]=c;okc=false;errLn=0;draw()}
+function comp(){const m=M[cur];if(pl.includes(null))return msg('Há lacunas vazias. Preencha todas antes de compilar.','wn');
+ for(let i=0;i<pl.length;i++){const c=pl[i];if(!m.ok[i].includes(c)){const ln=m.code.findIndex(l=>l.includes('{'+i+'}'))+1;pen+=5;errs++;okc=false;errLn=ln;draw();return msg(`Erro de compilação, linha ${ln}: ${m.syn[i][c]||'esta carta não cabe nessa lacuna.'} Menos 5 ciclos.`,'bad')}}
+ okc=true;errLn=0;draw();msg(`Compilado com sucesso. ${m.code.filter(Boolean).length} linhas, 0 erros. Autômato, pode executar!`,'ok')}
+function prep(){const m=M[cur];if(!okc){msg('Compile primeiro: o Autômato só executa código compilado.','wn');return false}
+ if(m.bat-pen<=0){msg('Blackout: a bateria acabou antes de começar. Reinicie a missão.','bad');return false}
+ const R=[];let s={...m.s0},t=0;const L=(ln,say,c=0,p={})=>{t+=c;s={...s,...p};R.push({ln,say,t,s})};m.sim(pl,L,()=>s);
+ tr=R;ix=-1;rem=m.bat-pen;$('#log').innerHTML='';$('#msg').className='p';stg(m.s0);bat(rem);return true}
+function show(st){document.querySelectorAll('.ln.cur').forEach(e=>e.classList.remove('cur'));const l=$('#l'+st.ln);if(l)l.classList.add('cur');
+ $('#log').insertAdjacentHTML('afterbegin',`<div>Linha ${st.ln}: ${esc(st.say)}</div>`);stg(st.s);bat(rem-st.t)}
+function next(){if(!tr)return;ix++;const st=tr[ix];
+ if(st.t>rem){stop();bat(0);tr=null;lose();msg('Blackout! A bateria da Torre zerou antes do fim. Procure um jeito mais econômico.','bad');return}
+ show(st);if(ix==tr.length-1)fin()}
+function fin(){stop();const m=M[cur],st=tr[ix],[ok,why]=m.chk(st.s),left=rem-st.t;tr=null;
+ const stars=ok?1+(left>=m.bat*.2?1:0)+(errs==0?1:0):0;
+ if(ok){win();best[cur]=Math.max(best[cur],stars);draw();stg(st.s);bat(left);msg(`Missão cumprida! +${PT} pontos. ${'★'.repeat(stars)}${'☆'.repeat(3-stars)} Sobraram ${left} ciclos. Estrelas: resultado certo, bateria com 20% ou mais, compilou sem erro.`,'ok')}
+ else if(lose(),1)msg(`Erro de lógica! ${why} O Compilador não percebeu, mas o Autômato expôs o bug. Troque as cartas e execute de novo.`,'bad')}
+function loop(){if(!play)return;next();if(play)tm=setTimeout(loop,+$('#sp').value)}
+$('#bC').onclick=()=>{stop();comp()};
+$('#bE').onclick=()=>{stop();if(prep()){play=true;loop()}};
+$('#bS').onclick=()=>{stop();if(!tr&&!prep())return;next()};
+$('#bR').onclick=()=>load(cur);
+$('#bH').onclick=()=>{const m=M[cur];if(pl.every(x=>x==null))return msg('Coloque algumas cartas primeiro para pedir ajuda.','wn');
+ pen+=5;const w=pl.findIndex((c,i)=>c!=null&&c!=m.right[i]);bat(m.bat-pen);
+ msg(w>=0?`Suporte Técnico: a lacuna L${w+1} não está certa. Menos 5 ciclos.`:pl.includes(null)?'Suporte Técnico: o que está colocado está certo, mas faltam lacunas. Menos 5 ciclos.':'Suporte Técnico: tudo certo! Pode compilar. Menos 5 ciclos.','wn')};
+document.addEventListener('dragstart',e=>{const k=e.target.dataset&&e.target.dataset.k;if(k!=null){dragK=+k;e.dataTransfer.setData('text/plain',k)}});
+document.addEventListener('dragover',e=>{if(e.target.closest('.bl,#bank'))e.preventDefault()});
+document.addEventListener('drop',e=>{e.preventDefault();if(dragK==null)return;const c=M[cur].cards[dragK],b=e.target.closest('.bl');
+ if(b)put(+b.dataset.i,c);else if(e.target.closest('#bank'))put(-1,c);dragK=null});
+document.addEventListener('click',e=>{const t=e.target.closest('[data-t]'),c=e.target.closest('.cd'),b=e.target.closest('.bl');
+ if(t)load(+t.dataset.t);
+ else if(c){sel=sel==+c.dataset.k?null:+c.dataset.k;draw()}
+ else if(b){const i=+b.dataset.i;if(sel!=null){const x=M[cur].cards[sel];sel=null;put(i,x)}else if(pl[i])put(-1,pl[i])}});
+/* ===== COLE AQUI os dados do seu projeto Supabase ===== */
+/* ===== COLE AQUI os dados do seu projeto Supabase ===== */
+const SB_URL="https://mulmobiwrfjcozqhwlmn.supabase.co",SB_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im11bG1vYml3cmZqY296cWh3bG1uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI3MTk3MDAsImV4cCI6MjEwODI5NTcwMH0.cwdIZ_ymxc4gorM_GeOkLYxPjvh9dQoBldwcI2oruwA";
+let SB=null,SK=0;
+/* ===== sala, pontuação, ranking ===== */
+let DB=null,U=null,ST={status:'lobby'},PL={},myId=null,isOrg=true,me=null,onl=false,cf=0,PT=0,GK=0,fnc=null;
+const GG=()=>{if(++GK>3000)throw 0;return 1};
+const el=()=>(ST.endedAt||Date.now()+SK)-(ST.startedAt||Date.now()+SK);
+const fmt=ms=>{const s=Math.max(0,Math.floor(ms/1000));return String(s/60|0).padStart(2,'0')+':'+String(s%60).padStart(2,'0')};
+const running=()=>ST.status=='running'&&!!me;
+const can=i=>i==0||!!(me&&me.done[i-1]!=null);
+function F(n,fn,os,code,cards,tests){return{n,fn,gen:1,bat:20,os,code,cards,tests,box:[],s0:{},info:'Os testes rodam o seu código com vários valores. Passou em todos, a missão está cumprida.',chk:s=>s.fail?[0,`${s.fail} teste(s) falharam. Compare o esperado com o obtido na fala do Autômato.`]:[1,'']}}
+function sv(){PL[me.id]=me;render()}
+function setSt(o){if(onl){rpc(o.status=='running'?'start_game':o.status=='ended'?'end_game':'new_game').then(pull);return}ST={...ST,...o};render()}
+function join(){const n=$('#nm').value.trim(),m=$('#lbMsg');if(!n){m.textContent='Digite seu nome para entrar.';return}
+ if(Object.values(PL).some(p=>p.name.toLowerCase()==n.toLowerCase()&&p.id!=myId)){m.textContent='Esse nome já está na partida. Escolha outro.';return}
+ if(onl){rpc('join_game',{p_name:n}).then(r=>{if(r.error)m.textContent=r.error.message;else pull()});return}
+ const id='p'+Date.now();me={id,name:n,score:0,errs:0,tMs:0,done:{},tries:{},mErr:{}};sv()}
+function rank(){const a=Object.values(PL).sort((x,y)=>y.score-x.score||x.errs-y.errs||(x.tMs||1e12)-(y.tMs||1e12));let r=0,pk='';
+ return '<table class="r"><tr><th>#</th><th>Jogador</th><th>Pontos</th><th>Erros</th><th>Missões</th><th>Tempo</th></tr>'+a.map((p,i)=>{const k=[p.score,p.errs,p.tMs].join();if(k!=pk){r=i+1;pk=k}const n=Object.keys(p.done).length;return `<tr class="${me&&p.id==me.id?'me':''}"><td>${r}º</td><td>${esc(p.name)}</td><td>${p.score}</td><td>${p.errs}</td><td>${n} de ${M.length}</td><td>${n?fmt(p.tMs):'—'}</td></tr>`}).join('')+'</table>'}
+function render(){const s=ST.status,pl=Object.values(PL),L=$('#lb'),R=$('#rk');
+ $('#top').innerHTML=`<span>${onl?'Online, sincronizado':'Modo local (só neste navegador)'}</span><span>${{lobby:'Aguardando jogadores',running:'Partida em andamento',ended:'Partida encerrada'}[s]||''}</span>`
+ +(s!='lobby'?`<span>⏱ <b id="clk">${fmt(el())}</b></span>`:'')
+ +(me&&s!='lobby'?`<span>${esc(me.name)}: ${me.score} pts · ${me.errs} erros · ${Object.keys(me.done).length}/${M.length} missões</span>`:'')
+ +(!onl&&pl.length?`<select id="pp" aria-label="Jogador">${pl.map(p=>`<option value="${p.id}" ${me&&p.id==me.id?'selected':''}>${esc(p.name)}</option>`).join('')}</select>`:'')
+ +(isOrg&&s=='running'?(cf?'<button class="rd" id="bY">Confirmar: terminar agora</button><button id="bN">Cancelar</button>':'<button class="rd" id="bT">Terminar partida</button>'):'')
+ +(isOrg&&s=='ended'?'<button id="bNg">Nova partida</button>':'');
+ const late=s=='running'&&!me&&!isOrg;
+ L.hidden=!(s=='lobby'||late);R.hidden=!(s=='ended'||(s=='running'&&isOrg&&!me));$('#gm').hidden=$('#tabs').hidden=!(s=='running'&&me);
+ if(!L.hidden){const nv=$('#nm')&&$('#nm').value,f=document.activeElement&&document.activeElement.id=='nm';
+  L.innerHTML='<h2>Sala de espera</h2>'+(late?'<p>A partida já começou. Aguarde a próxima.</p>':me&&onl?`<p>Você entrou como <b>${esc(me.name)}</b>. Aguarde o organizador iniciar a partida.</p>`:'<p><input id="nm" maxlength="24" placeholder="Seu nome" aria-label="Seu nome"> <button id="bJ">Entrar na partida</button></p><p class="hint" id="lbMsg"></p>')
+  +`<h2>Participantes (${pl.length})</h2><ol>${pl.map(p=>`<li>${esc(p.name)}</li>`).join('')||'<li class="hint">Ninguém entrou ainda.</li>'}</ol>`+(isOrg&&!late?`<button class="go2" id="bI" ${pl.length?'':'disabled'}>Iniciar partida</button>`:'');
+  if($('#nm')&&nv){$('#nm').value=nv;if(f)$('#nm').focus()}}
+ if(!R.hidden)R.innerHTML=`<h2>${s=='ended'?'Classificação final':'Ranking ao vivo'}</h2>`+rank()+(s=='ended'?'<p class="hint">Ordem: mais pontos, depois menos erros, depois menor tempo. Quem não concluiu missões aparece com 0 pontos.</p>':'')}
+function win(){if(onl&&running()&&me.done[cur]==null){PT='…';const c=cur;rpc('submit_mission',{p_mission:c,p_cards:pl}).then(r=>{const p=r.data;if(r.error||p<0){if(!r.error)msg('O servidor não validou essa resposta.','bad');return}$('#msg').textContent=$('#msg').textContent.replace('+… pontos','+'+p+' pontos');pull();if(M[c+1])setTimeout(()=>{if(cur==c&&running())load(c+1)},3500)});return}PT=0;if(!running()||me.done[cur]!=null)return;const c=cur;PT=Math.max(0,100-10*(me.mErr[c]||0));me.score+=PT;me.tries[c]=(me.tries[c]||0)+1;me.done[c]=me.tMs=el();sv();if(M[c+1])setTimeout(()=>{if(cur==c&&running())load(c+1)},3500)}
+function lose(){if(!running()||me.done[cur]!=null)return;if(onl){rpc('register_error',{p_mission:cur}).then(pull);return}me.errs++;me.mErr[cur]=(me.mErr[cur]||0)+1;me.tries[cur]=(me.tries[cur]||0)+1;sv()}
+function build(m){let c=m.code.map(l=>l.replace(/\{(\d)\}/g,(_,k)=>pl[k])).join('\n');
+ c=c.replace(/^int\s+\w+\(([^)]*)\)/,(_,p)=>'function f('+p.replace(/int\s+/g,'').replace(/\[\]/g,'')+')').replace(/\bint\b/g,'let').replace(/for \(([^;]*);([^;]*);([^)]*)\)/g,'for ($1;__g()&&($2);$3)').replace(/while \(([^)]*)\)/g,'while (__g()&&($1))');
+ return new Function('__g',c+'\nreturn f;')(GG)}
+const oc=comp;comp=function(){const m=M[cur];if(!running())return msg('A partida não está em andamento.','wn');
+ if(!m.gen){const e=errs;oc();if(errs>e)lose();return}
+ if(pl.includes(null))return msg('Há lacunas vazias. Preencha todas antes de compilar.','wn');
+ try{fnc=build(m);okc=true;errLn=0;draw();msg(`Compilado com sucesso. ${m.code.length} linhas, 0 erros. Autômato, pode executar!`,'ok')}
+ catch(x){const ln=m.code.findIndex(l=>/\{\d\}/.test(l))+1;pen+=5;errs++;okc=false;errLn=ln;draw();msg(`Erro de compilação perto da linha ${ln}: essa combinação de cartas não forma código C válido. Menos 5 ciclos.`,'bad');lose()}};
+const op=prep;prep=function(){const m=M[cur];if(!running()){msg('A partida não está em andamento.','wn');return false}
+ if(!m.gen)return op();
+ if(!okc){msg('Compile primeiro: o Autômato só executa código compilado.','wn');return false}
+ if(m.bat-pen<=0){msg('Blackout: a bateria acabou. Reinicie a missão.','bad');return false}
+ let bad=0;tr=m.tests.map(([a,e])=>{GK=0;let g;try{g=fnc(...JSON.parse(JSON.stringify(a)))}catch(x){g='Ctrl+C (laço sem fim)'}const ok=g===e;if(!ok)bad++;return{ln:0,t:0,s:{fail:bad},say:`${m.fn}(${a.map(x=>JSON.stringify(x)).join(', ')}) → esperado ${e}, obtido ${g} ${ok?'✔':'✘'}`}});
+ ix=-1;rem=m.bat-pen;$('#log').innerHTML='';$('#msg').className='p';stg(m.s0);bat(rem);return true};
+const ol=load;load=function(i){if(can(i))ol(i)};
+const op2=put;put=function(i,c){if(running())op2(i,c)};
+const od=draw;draw=function(){od();document.querySelectorAll('#tabs button').forEach(b=>{const i=+b.dataset.t;if(!can(i)){b.textContent='🔒 '+b.textContent;b.classList.add('lk')}else if(me&&me.done[i]!=null)b.textContent+=' ✔'})};
+const bh=$('#bH').onclick;$('#bH').onclick=()=>{if(1){pen+=5;bat(M[cur].bat-pen);msg('Suporte Técnico: compare o esperado com o obtido nos testes que falharam e releia a condição de cada if e de cada laço. Menos 5 ciclos.','wn')}else bh()};
+document.addEventListener('click',e=>{const id=e.target.id;
+ if(id=='bJ')join();
+ else if(id=='bI'&&isOrg&&ST.status=='lobby'&&Object.keys(PL).length){setSt({status:'running',startedAt:Date.now(),endedAt:0});if(!onl)load(0)}
+ else if(id=='bT'){cf=1;render()}
+ else if(id=='bN'){cf=0;render()}
+ else if(id=='bY'&&isOrg&&ST.status=='running'){cf=0;stop();setSt({status:'ended',endedAt:Date.now()})}
+ else if(id=='bNg'&&isOrg){PL={};me=null;setSt({status:'lobby',startedAt:0,endedAt:0})}});
+document.addEventListener('change',e=>{if(e.target.id=='pp'){me=PL[e.target.value]||me;render();load(0)}});
+const rpc=(f,a)=>SB.rpc(f,a).then(r=>{if(r.error&&f!='join_game')msg(r.error.message,'bad');return r});
+let pt=0,dn=-1,ld=0;const deb=()=>{clearTimeout(pt);pt=setTimeout(pull,300)};
+async function pull(){try{const[g,p]=await Promise.all([SB.from('game').select('*').eq('id',1).single(),SB.from('players').select('*')]);
+ const o=ST.status,d=g.data;if(d)ST={status:d.status,startedAt:d.started_at?Date.parse(d.started_at):0,endedAt:d.ended_at?Date.parse(d.ended_at):0};
+ PL={};(p.data||[]).forEach(x=>PL[x.id]={id:x.id,name:x.name,score:x.score,errs:x.errs,tMs:+x.t_ms,done:x.done||{},tries:x.tries||{},mErr:x.m_err||{}});
+ me=PL[myId]||null;
+ if(me&&!ld&&ST.status=='running'){let i=0;while(me.done[i]!=null&&i<M.length-1)i++;load(i)}else if(o!='running'&&ST.status=='running')load(0);
+ if(me)ld=1;
+ const n=me?Object.keys(me.done).length:-1;if(n!=dn){dn=n;draw()}
+ render()}catch(e){}}
+(async()=>{try{
+ if(/COLE/.test(SB_URL))throw 0;
+ SB=supabase.createClient(SB_URL,SB_KEY);
+ let{data:{session}}=await SB.auth.getSession();
+ if(!session){const r=await SB.auth.signInAnonymously();if(r.error)throw r.error;session=r.data.session}
+ myId=session.user.id;isOrg=!!session.user.email;onl=true;
+ const t=await SB.rpc('server_time');if(t.data)SK=Date.parse(t.data)-Date.now();
+ await pull();SB.channel('g').on('postgres_changes',{event:'*',schema:'public'},deb).subscribe();setInterval(pull,5000)
+}catch(x){onl=false}render()})();
+document.addEventListener('click',e=>{if(e.target.id=='bOrg'){e.preventDefault();if(!SB)return alert('Configure o Supabase no arquivo primeiro.');const m=prompt('E-mail do organizador'),s=m&&prompt('Senha');if(s)SB.auth.signInWithPassword({email:m,password:s}).then(r=>r.error?alert('E-mail ou senha incorretos.'):location.reload())}});
+setInterval(()=>{const c=$('#clk');if(c)c.textContent=fmt(el())},1000);
+render();
+load(0);
+</script></body></html>
