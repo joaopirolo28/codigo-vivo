@@ -211,7 +211,7 @@ function render(){const s=ST.status,pl=Object.values(PL),L=$('#lb'),R=$('#rk');
  L.hidden=!(s=='lobby'||late);R.hidden=!(s=='ended'||(s=='running'&&isOrg&&!me));$('#gm').hidden=$('#tabs').hidden=!(s=='running'&&me);
  if(!L.hidden){const nv=$('#nm')&&$('#nm').value,f=document.activeElement&&document.activeElement.id=='nm';
   L.innerHTML='<h2>Sala de espera</h2>'+(late?'<p>A partida já começou. Aguarde a próxima.</p>':me&&onl?`<p>Você entrou como <b>${esc(me.name)}</b>. Aguarde o organizador iniciar a partida.</p>`:'<p><input id="nm" maxlength="24" placeholder="Seu nome" aria-label="Seu nome"> <button id="bJ">Entrar na partida</button></p><p class="hint" id="lbMsg"></p>')
-  +`<h2>Participantes (${pl.length})</h2><ol>${pl.map(p=>`<li>${esc(p.name)}</li>`).join('')||'<li class="hint">Ninguém entrou ainda.</li>'}</ol>`+(isOrg&&!late?`<button class="go2" id="bI" ${pl.length?'':'disabled'}>Iniciar partida</button>`:'');
+  +`<h2>Participantes (${pl.length})</h2><ol>${pl.map(p=>`<li>${esc(p.name)}</li>`).join('')||'<li class="hint">Ninguém entrou ainda.</li>'}</ol>`+(isOrg&&!late?`<button class="go2" id="bI" ${pl.length?'':'disabled'}>Iniciar partida</button> <button id="bCl" ${pl.length?'':'disabled'}>Limpar jogadores</button>`:'');
   if($('#nm')&&nv){$('#nm').value=nv;if(f)$('#nm').focus()}}
  if(!R.hidden)R.innerHTML=`<h2>${s=='ended'?'Classificação final':'Ranking ao vivo'}</h2>`+rank()+(s=='ended'?'<p class="hint">Ordem: mais pontos, depois menos erros, depois menor tempo. Quem não concluiu missões aparece com 0 pontos.</p>':'')}
 function win(){if(onl&&running()&&me.done[cur]==null){PT='…';const c=cur;rpc('submit_mission',{p_mission:c,p_cards:pl}).then(r=>{const p=r.data;if(r.error||p<0){if(!r.error)msg('O servidor não validou essa resposta.','bad');return}$('#msg').textContent=$('#msg').textContent.replace('+… pontos','+'+p+' pontos');pull();if(M[c+1])setTimeout(()=>{if(cur==c&&running())load(c+1)},3500)});return}PT=0;if(!running()||me.done[cur]!=null)return;const c=cur;PT=Math.max(0,100-10*(me.mErr[c]||0));me.score+=PT;me.tries[c]=(me.tries[c]||0)+1;me.done[c]=me.tMs=el();sv();if(M[c+1])setTimeout(()=>{if(cur==c&&running())load(c+1)},3500)}
@@ -240,6 +240,7 @@ document.addEventListener('click',e=>{const id=e.target.id;
  else if(id=='bT'){cf=1;render()}
  else if(id=='bN'){cf=0;render()}
  else if(id=='bY'&&isOrg&&ST.status=='running'){cf=0;stop();setSt({status:'ended',endedAt:Date.now()})}
+ else if(id=='bCl'&&isOrg){if(confirm('Remover TODOS os jogadores da sala?')){if(onl)setSt({status:'lobby'});else{PL={};me=null;render()}}}
  else if(id=='bNg'&&isOrg){PL={};me=null;setSt({status:'lobby',startedAt:0,endedAt:0})}});
 document.addEventListener('change',e=>{if(e.target.id=='pp'){me=PL[e.target.value]||me;render();load(0)}});
 const rpc=(f,a)=>SB.rpc(f,a).then(r=>{if(r.error&&f!='join_game'){msg(r.error.message,'bad');if(['start_game','end_game','new_game'].includes(f))alert('Erro ao executar '+f+': '+r.error.message)}return r});
@@ -257,11 +258,11 @@ async function pull(){try{const[g,p]=await Promise.all([SB.from('game').select('
  SB=supabase.createClient(SB_URL,SB_KEY);
  let{data:{session}}=await SB.auth.getSession();
  if(!session){const r=await SB.auth.signInAnonymously();if(r.error)throw r.error;session=r.data.session}
- myId=session.user.id;isOrg=!!session.user.email;onl=true;
+ myId=session.user.id;isOrg=!!session.user.email;onl=true;{const lk=$('#bOrg');if(lk&&isOrg)lk.textContent='Sair do modo organizador'}
  const t=await SB.rpc('server_time');if(t.data)SK=Date.parse(t.data)-Date.now();
  await pull();SB.channel('g').on('postgres_changes',{event:'*',schema:'public'},deb).subscribe();setInterval(pull,5000)
 }catch(x){onl=false;ERR=(x&&(x.message||x.code))||String(x);console.error('Supabase:',x)}render()})();
-document.addEventListener('click',e=>{if(e.target.id=='bOrg'){e.preventDefault();if(!SB)return alert('Configure o Supabase no arquivo primeiro.');const m=prompt('E-mail do organizador'),s=m&&prompt('Senha');if(s)SB.auth.signInWithPassword({email:m,password:s}).then(r=>r.error?alert('E-mail ou senha incorretos.'):location.reload())}});
+document.addEventListener('click',e=>{if(e.target.id=='bOrg'){e.preventDefault();if(!SB)return alert('Configure o Supabase no arquivo primeiro.');if(isOrg&&onl){SB.auth.signOut().then(()=>location.reload());return}const m=prompt('E-mail do organizador'),s=m&&prompt('Senha');if(s)SB.auth.signInWithPassword({email:m,password:s}).then(r=>r.error?alert('E-mail ou senha incorretos.'):location.reload())}});
 setInterval(()=>{const c=$('#clk');if(c)c.textContent=fmt(el())},1000);
 render();
 load(0);
